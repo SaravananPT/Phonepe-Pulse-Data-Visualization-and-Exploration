@@ -1,0 +1,573 @@
+#pakages
+import os
+import psycopg2
+import json
+import git
+import pandas as pd
+
+# Function to clean state names
+def clean_state_name(state):
+    state = state.replace("andaman-&-nicobar-islands", "Andaman & Nicobar")
+    state = state.replace("-", " ")
+    state = state.title()
+    state = state.replace("Dadra & Nagar Haveli & Daman & Diu", "Dadra and Nagar Haveli and Daman and Diu")
+    return state
+
+# Function to process insurance data
+def process_insurance_data(path):
+    columns = {"States": [], "Years": [], "Quarter": [], "Insurance_type": [], "Insurance_count": [], "Insurance_amount": []}
+    
+    agg_insur_list = os.listdir(path)
+    
+    for state in agg_insur_list:
+        cur_states = os.path.join(path, state)
+        if os.path.isdir(cur_states):
+            agg_year_list = os.listdir(cur_states)
+            
+            for year in agg_year_list:
+                cur_years = os.path.join(cur_states, year)
+                if os.path.isdir(cur_years):
+                    agg_file_list = os.listdir(cur_years)
+
+                    for file in agg_file_list:
+                        cur_files = os.path.join(cur_years, file)
+                        if os.path.isfile(cur_files):
+                            with open(cur_files, "r") as data:
+                                A = json.load(data)
+
+                                for i in A["data"]["transactionData"]:
+                                    name = i["name"]
+                                    count = i["paymentInstruments"][0]["count"]
+                                    amount = i["paymentInstruments"][0]["amount"]
+                                    columns["Insurance_type"].append(name)
+                                    columns["Insurance_count"].append(count)
+                                    columns["Insurance_amount"].append(amount)
+                                    columns["States"].append(clean_state_name(state))
+                                    columns["Years"].append(year)
+                                    columns["Quarter"].append(int(file.strip(".json")))
+
+    return pd.DataFrame(columns)
+
+# Function to process transaction data
+def process_transaction_data(path):
+    columns = {"States": [], "Years": [], "Quarter": [], "Transaction_type": [], "Transaction_count": [], "Transaction_amount": []}
+    
+    agg_tran_list = os.listdir(path)
+    
+    for state in agg_tran_list:
+        cur_states = os.path.join(path, state)
+        if os.path.isdir(cur_states):
+            agg_year_list = os.listdir(cur_states)
+            
+            for year in agg_year_list:
+                cur_years = os.path.join(cur_states, year)
+                if os.path.isdir(cur_years):
+                    agg_file_list = os.listdir(cur_years)
+
+                    for file in agg_file_list:
+                        cur_files = os.path.join(cur_years, file)
+                        if os.path.isfile(cur_files):
+                            with open(cur_files, "r") as data:
+                                B = json.load(data)
+
+                                for i in B["data"]["transactionData"]:
+                                    name = i["name"]
+                                    count = i["paymentInstruments"][0]["count"]
+                                    amount = i["paymentInstruments"][0]["amount"]
+                                    columns["Transaction_type"].append(name)
+                                    columns["Transaction_count"].append(count)
+                                    columns["Transaction_amount"].append(amount)
+                                    columns["States"].append(clean_state_name(state))
+                                    columns["Years"].append(year)
+                                    columns["Quarter"].append(int(file.strip(".json")))
+
+    return pd.DataFrame(columns)
+
+# Function to process user data
+def process_user_data(path):
+    columns = {"States": [], "Years": [], "Quarter": [], "Brands": [], "Transaction_count": [], "Percentage": []}
+    
+    agg_user_list = os.listdir(path)
+    
+    for state in agg_user_list:
+        cur_states = os.path.join(path, state)
+        if os.path.isdir(cur_states):
+            agg_year_list = os.listdir(cur_states)
+            
+            for year in agg_year_list:
+                cur_years = os.path.join(cur_states, year)
+                if os.path.isdir(cur_years):
+                    agg_file_list = os.listdir(cur_years)
+
+                    for file in agg_file_list:
+                        cur_files = os.path.join(cur_years, file)
+                        if os.path.isfile(cur_files):
+                            with open(cur_files, "r") as data:
+                                C = json.load(data)
+
+                                try:
+                                    for i in C["data"]["usersByDevice"]:
+                                        brand = i["brand"]
+                                        count = i["count"]
+                                        percentage = i["percentage"]
+                                        columns["Brands"].append(brand)
+                                        columns["Transaction_count"].append(count)
+                                        columns["Percentage"].append(percentage)
+                                        columns["States"].append(clean_state_name(state))
+                                        columns["Years"].append(year)
+                                        columns["Quarter"].append(int(file.strip(".json")))
+                                except:
+                                    pass
+
+    return pd.DataFrame(columns)
+
+# Function to process map insurance data
+def process_map_insurance_data(path):
+    columns = {"States": [], "Years": [], "Quarter": [], "Districts": [], "Transaction_count": [], "Transaction_amount": []}
+    
+    map_insur_list = os.listdir(path)
+    
+    for state in map_insur_list:
+        cur_states = os.path.join(path, state)
+        if os.path.isdir(cur_states):
+            agg_year_list = os.listdir(cur_states)
+            
+            for year in agg_year_list:
+                cur_years = os.path.join(cur_states, year)
+                if os.path.isdir(cur_years):
+                    agg_file_list = os.listdir(cur_years)
+
+                    for file in agg_file_list:
+                        cur_files = os.path.join(cur_years, file)
+                        if os.path.isfile(cur_files):
+                            with open(cur_files, "r") as data:
+                                D = json.load(data)
+
+                                for i in D["data"]["hoverDataList"]:
+                                    name = i["name"]
+                                    count = i["metric"][0]["count"]
+                                    amount = i["metric"][0]["amount"]
+                                    columns["Districts"].append(name)
+                                    columns["Transaction_count"].append(count)
+                                    columns["Transaction_amount"].append(amount)
+                                    columns["States"].append(clean_state_name(state))
+                                    columns["Years"].append(year)
+                                    columns["Quarter"].append(int(file.strip(".json")))
+
+    return pd.DataFrame(columns)
+
+# Function to process map transaction data
+def process_map_transaction_data(path):
+    columns = {"States": [], "Years": [], "Quarter": [], "District": [], "Transaction_count": [], "Transaction_amount": []}
+    
+    map_tran_list = os.listdir(path)
+    
+    for state in map_tran_list:
+        cur_states = os.path.join(path, state)
+        if os.path.isdir(cur_states):
+            map_year_list = os.listdir(cur_states)
+            
+            for year in map_year_list:
+                cur_years = os.path.join(cur_states, year)
+                if os.path.isdir(cur_years):
+                    map_file_list = os.listdir(cur_years)
+
+                    for file in map_file_list:
+                        cur_files = os.path.join(cur_years, file)
+                        if os.path.isfile(cur_files):
+                            with open(cur_files, "r") as data:
+                                E = json.load(data)
+
+                                for i in E['data']["hoverDataList"]:
+                                    name = i["name"]
+                                    count = i["metric"][0]["count"]
+                                    amount = i["metric"][0]["amount"]
+                                    columns["District"].append(name)
+                                    columns["Transaction_count"].append(count)
+                                    columns["Transaction_amount"].append(amount)
+                                    columns["States"].append(clean_state_name(state))
+                                    columns["Years"].append(year)
+                                    columns["Quarter"].append(int(file.strip(".json")))
+
+    return pd.DataFrame(columns)
+
+# Function to process map user data
+def process_map_user_data(path):
+    columns = {"States": [], "Years": [], "Quarter": [], "Districts": [], "RegisteredUser": [], "AppOpens": []}
+    
+    map_user_list = os.listdir(path)
+    
+    for state in map_user_list:
+        cur_states = os.path.join(path, state)
+        if os.path.isdir(cur_states):
+            map_year_list = os.listdir(cur_states)
+            
+            for year in map_year_list:
+                cur_years = os.path.join(cur_states, year)
+                if os.path.isdir(cur_years):
+                    map_file_list = os.listdir(cur_years)
+
+                    for file in map_file_list:
+                        cur_files = os.path.join(cur_years, file)
+                        if os.path.isfile(cur_files):
+                            with open(cur_files, "r") as data:
+                                F = json.load(data)
+
+                                for district, info in F["data"]["hoverData"].items():
+                                    registered_user = info["registeredUsers"]
+                                    app_opens = info["appOpens"]
+                                    columns["Districts"].append(district)
+                                    columns["RegisteredUser"].append(registered_user)
+                                    columns["AppOpens"].append(app_opens)
+                                    columns["States"].append(clean_state_name(state))
+                                    columns["Years"].append(year)
+                                    columns["Quarter"].append(int(file.strip(".json")))
+
+    return pd.DataFrame(columns)
+
+# Function to process top insurance data
+def process_top_insurance_data(path):
+    columns = {"States": [], "Years": [], "Quarter": [], "Pincodes": [], "Transaction_count": [], "Transaction_amount": []}
+    
+    top_insur_list = os.listdir(path)
+    
+    for state in top_insur_list:
+        cur_states = os.path.join(path, state)
+        if os.path.isdir(cur_states):
+            top_year_list = os.listdir(cur_states)
+            
+            for year in top_year_list:
+                cur_years = os.path.join(cur_states, year)
+                if os.path.isdir(cur_years):
+                    top_file_list = os.listdir(cur_years)
+
+                    for file in top_file_list:
+                        cur_files = os.path.join(cur_years, file)
+                        if os.path.isfile(cur_files):
+                            with open(cur_files, "r") as data:
+                                G = json.load(data)
+
+                                for i in G["data"]["pincodes"]:
+                                    entity_name = i["entityName"]
+                                    count = i["metric"]["count"]
+                                    amount = i["metric"]["amount"]
+                                    columns["Pincodes"].append(entity_name)
+                                    columns["Transaction_count"].append(count)
+                                    columns["Transaction_amount"].append(amount)
+                                    columns["States"].append(clean_state_name(state))
+                                    columns["Years"].append(year)
+                                    columns["Quarter"].append(int(file.strip(".json")))
+
+    return pd.DataFrame(columns)
+
+# Function to process top transaction data
+def process_top_transaction_data(path):
+    columns = {"States": [], "Years": [], "Quarter": [], "Pincodes": [], "Transaction_count": [], "Transaction_amount": []}
+    
+    top_tran_list = os.listdir(path)
+    
+    for state in top_tran_list:
+        cur_states = os.path.join(path, state)
+        if os.path.isdir(cur_states):
+            top_year_list = os.listdir(cur_states)
+            
+            for year in top_year_list:
+                cur_years = os.path.join(cur_states, year)
+                if os.path.isdir(cur_years):
+                    top_file_list = os.listdir(cur_years)
+
+                    for file in top_file_list:
+                        cur_files = os.path.join(cur_years, file)
+                        if os.path.isfile(cur_files):
+                            with open(cur_files, "r") as data:
+                                H = json.load(data)
+
+                                for i in H["data"]["pincodes"]:
+                                    entity_name = i["entityName"]
+                                    count = i["metric"]["count"]
+                                    amount = i["metric"]["amount"]
+                                    columns["Pincodes"].append(entity_name)
+                                    columns["Transaction_count"].append(count)
+                                    columns["Transaction_amount"].append(amount)
+                                    columns["States"].append(clean_state_name(state))
+                                    columns["Years"].append(year)
+                                    columns["Quarter"].append(int(file.strip(".json")))
+
+    return pd.DataFrame(columns)
+
+# Function to process top user data
+def process_top_user_data(path):
+    columns = {"States": [], "Years": [], "Quarter": [], "Pincodes": [], "RegisteredUser": []}
+    
+    top_user_list = os.listdir(path)
+    
+    for state in top_user_list:
+        cur_states = os.path.join(path, state)
+        if os.path.isdir(cur_states):
+            top_year_list = os.listdir(cur_states)
+            
+            for year in top_year_list:
+                cur_years = os.path.join(cur_states, year)
+                if os.path.isdir(cur_years):
+                    top_file_list = os.listdir(cur_years)
+
+                    for file in top_file_list:
+                        cur_files = os.path.join(cur_years, file)
+                        if os.path.isfile(cur_files):
+                            with open(cur_files, "r") as data:
+                                I = json.load(data)
+
+                                for i in I["data"]["pincodes"]:
+                                    name = i["name"]
+                                    registered_users = i["registeredUsers"]
+                                    columns["Pincodes"].append(name)
+                                    columns["RegisteredUser"].append(registered_users)
+                                    columns["States"].append(clean_state_name(state))
+                                    columns["Years"].append(year)
+                                    columns["Quarter"].append(int(file.strip(".json")))
+
+    return pd.DataFrame(columns)
+
+# Define file paths
+path_insurance = "/Users/ptsaravanan/Documents/DATA SCIENCE/Project/CAPSTONE Project/Phonepe Pulse DV/pulse/data/aggregated/insurance/country/india/state/"
+path_transaction = "/Users/ptsaravanan/Documents/DATA SCIENCE/Project/CAPSTONE Project/Phonepe Pulse DV/pulse/data/aggregated/transaction/country/india/state/"
+path_user = "/Users/ptsaravanan/Documents/DATA SCIENCE/Project/CAPSTONE Project/Phonepe Pulse DV/pulse/data/aggregated/user/country/india/state/"
+path_map_insurance = "/Users/ptsaravanan/Documents/DATA SCIENCE/Project/CAPSTONE Project/Phonepe Pulse DV/pulse/data/map/insurance/hover/country/india/state/"
+path_map_transaction = "/Users/ptsaravanan/Documents/DATA SCIENCE/Project/CAPSTONE Project/Phonepe Pulse DV/pulse/data/map/transaction/hover/country/india/state/"
+path_map_user = "/Users/ptsaravanan/Documents/DATA SCIENCE/Project/CAPSTONE Project/Phonepe Pulse DV/pulse/data/map/user/hover/country/india/state/"
+path_top_insurance = "/Users/ptsaravanan/Documents/DATA SCIENCE/Project/CAPSTONE Project/Phonepe Pulse DV/pulse/data/top/insurance/country/india/state/"
+path_top_transaction = "/Users/ptsaravanan/Documents/DATA SCIENCE/Project/CAPSTONE Project/Phonepe Pulse DV/pulse/data/top/transaction/country/india/state/"
+path_top_user = "/Users/ptsaravanan/Documents/DATA SCIENCE/Project/CAPSTONE Project/Phonepe Pulse DV/pulse/data/top/user/country/india/state/"
+
+# Process data
+aggre_insurance = process_insurance_data(path_insurance)
+aggre_transaction = process_transaction_data(path_transaction)
+aggre_user = process_user_data(path_user)
+map_insurance = process_map_insurance_data(path_map_insurance)
+map_transaction = process_map_transaction_data(path_map_transaction)
+map_user = process_map_user_data(path_map_user)
+top_insurance = process_top_insurance_data(path_top_insurance)
+top_transaction = process_top_transaction_data(path_top_transaction)
+top_user = process_top_user_data(path_top_user)
+
+#Table Creation
+#pgsql connection
+mydb = psycopg2.connect(host = "localhost",
+                        user = "postgres",
+                        password = "pw",
+                        database = "phonepe_pulse",
+                        port = "5432"
+                        )
+cursor = mydb.cursor()
+
+#aggregated insurance table
+create_query7= '''CREATE TABLE if not exists aggregated_insurance (States varchar(50),
+                                                                      Years int,
+                                                                      Quarter int,
+                                                                      Insurance_type varchar(50),
+                                                                      Insurance_count bigint,
+                                                                      Insurance_amount bigint
+                                                                      )'''
+cursor.execute(create_query7)
+mydb.commit()
+
+for index,row in aggre_insurance.iterrows():
+    insert_query7 = '''INSERT INTO aggregated_insurance (States, Years, Quarter, Insurance_type, Insurance_count, Insurance_amount)
+                                                        values(%s,%s,%s,%s,%s,%s)'''
+    values = (row["States"],
+              row["Years"],
+              row["Quarter"],
+              row["Insurance_type"],
+              row["Insurance_count"],
+              row["Insurance_amount"]
+              )
+    cursor.execute(insert_query7,values)
+    mydb.commit()
+
+#aggregated transaction table
+create_query1 = '''CREATE TABLE if not exists aggregated_transaction (States varchar(50),
+                                                                      Years int,
+                                                                      Quarter int,
+                                                                      Transaction_type varchar(50),
+                                                                      Transaction_count bigint,
+                                                                      Transaction_amount bigint
+                                                                      )'''
+cursor.execute(create_query1)
+mydb.commit()
+
+for index,row in aggre_transaction.iterrows():
+    insert_query1 = '''INSERT INTO aggregated_transaction (States, Years, Quarter, Transaction_type, Transaction_count, Transaction_amount)
+                                                        values(%s,%s,%s,%s,%s,%s)'''
+    values = (row["States"],
+              row["Years"],
+              row["Quarter"],
+              row["Transaction_type"],
+              row["Transaction_count"],
+              row["Transaction_amount"]
+              )
+    cursor.execute(insert_query1,values)
+    mydb.commit()
+
+#aggregated user table
+create_query2 = '''CREATE TABLE if not exists aggregated_user (States varchar(50),
+                                                                Years int,
+                                                                Quarter int,
+                                                                Brands varchar(50),
+                                                                Transaction_count bigint,
+                                                                Percentage float)'''
+cursor.execute(create_query2)
+mydb.commit()
+
+for index,row in aggre_user.iterrows():
+    insert_query2 = '''INSERT INTO aggregated_user (States, Years, Quarter, Brands, Transaction_count, Percentage)
+                                                    values(%s,%s,%s,%s,%s,%s)'''
+    values = (row["States"],
+              row["Years"],
+              row["Quarter"],
+              row["Brands"],
+              row["Transaction_count"],
+              row["Percentage"])
+    cursor.execute(insert_query2,values)
+    mydb.commit()
+
+#map_insurance_table
+create_query8 = '''CREATE TABLE if not exists map_insurance (States varchar(50),
+                                                                Years int,
+                                                                Quarter int,
+                                                                District varchar(50),
+                                                                Transaction_count bigint,
+                                                                Transaction_amount float)'''
+cursor.execute(create_query8)
+mydb.commit()
+
+for index,row in map_insurance.iterrows():
+            insert_query8 = '''
+                INSERT INTO map_insurance (States, Years, Quarter, District, Transaction_count, Transaction_amount)
+                VALUES (%s, %s, %s, %s, %s, %s)
+
+            '''
+            values = (
+                row['States'],
+                row['Years'],
+                row['Quarter'],
+                row['Districts'],
+                row['Transaction_count'],
+                row['Transaction_amount']
+            )
+            cursor.execute(insert_query8,values)
+            mydb.commit() 
+
+#map_transaction_table
+create_query3 = '''CREATE TABLE if not exists map_transaction (States varchar(50),
+                                                                Years int,
+                                                                Quarter int,
+                                                                District varchar(50),
+                                                                Transaction_count bigint,
+                                                                Transaction_amount float)'''
+cursor.execute(create_query3)
+mydb.commit()
+
+for index,row in map_transaction.iterrows():
+            insert_query3 = '''
+                INSERT INTO map_Transaction (States, Years, Quarter, District, Transaction_count, Transaction_amount)
+                VALUES (%s, %s, %s, %s, %s, %s)
+
+            '''
+            values = (
+                row['States'],
+                row['Years'],
+                row['Quarter'],
+                row['District'],
+                row['Transaction_count'],
+                row['Transaction_amount']
+            )
+            cursor.execute(insert_query3,values)
+            mydb.commit() 
+
+
+#map_user_table
+create_query4 = '''CREATE TABLE if not exists map_user (States varchar(50),
+                                                        Years int,
+                                                        Quarter int,
+                                                        Districts varchar(50),
+                                                        RegisteredUser bigint,
+                                                        AppOpens bigint)'''
+cursor.execute(create_query4)
+mydb.commit()
+
+for index,row in map_user.iterrows():
+    insert_query4 = '''INSERT INTO map_user (States, Years, Quarter, Districts, RegisteredUser, AppOpens)
+                        values(%s,%s,%s,%s,%s,%s)'''
+    values = (row["States"],
+              row["Years"],
+              row["Quarter"],
+              row["Districts"],
+              row["RegisteredUser"],
+              row["AppOpens"])
+    cursor.execute(insert_query4,values)
+    mydb.commit()
+
+#top_insurance_table
+create_query9 = '''CREATE TABLE if not exists top_insurance (States varchar(50),
+                                                                Years int,
+                                                                Quarter int,
+                                                                Pincodes int,
+                                                                Transaction_count bigint,
+                                                                Transaction_amount bigint)'''
+cursor.execute(create_query9)
+mydb.commit()
+
+for index,row in top_insurance.iterrows():
+    insert_query9 = '''INSERT INTO top_insurance (States, Years, Quarter, Pincodes, Transaction_count, Transaction_amount)
+                                                    values(%s,%s,%s,%s,%s,%s)'''
+    values = (row["States"],
+              row["Years"],
+              row["Quarter"],
+              row["Pincodes"],
+              row["Transaction_count"],
+              row["Transaction_amount"])
+    cursor.execute(insert_query9,values)
+    mydb.commit()
+
+#top_transaction_table
+create_query5 = '''CREATE TABLE if not exists top_transaction (States varchar(50),
+                                                                Years int,
+                                                                Quarter int,
+                                                                pincodes int,
+                                                                Transaction_count bigint,
+                                                                Transaction_amount bigint)'''
+cursor.execute(create_query5)
+mydb.commit()
+
+for index,row in top_transaction.iterrows():
+    insert_query5 = '''INSERT INTO top_transaction (States, Years, Quarter, Pincodes, Transaction_count, Transaction_amount)
+                                                    values(%s,%s,%s,%s,%s,%s)'''
+    values = (row["States"],
+              row["Years"],
+              row["Quarter"],
+              row["Pincodes"],
+              row["Transaction_count"],
+              row["Transaction_amount"])
+    cursor.execute(insert_query5,values)
+    mydb.commit()
+
+#top_user_table
+create_query6 = '''CREATE TABLE if not exists top_user (States varchar(50),
+                                                        Years int,
+                                                        Quarter int,
+                                                        Pincodes int,
+                                                        RegisteredUser bigint
+                                                        )'''
+cursor.execute(create_query6)
+mydb.commit()
+
+for index,row in top_user.iterrows():
+    insert_query6 = '''INSERT INTO top_user (States, Years, Quarter, Pincodes, RegisteredUser)
+                                            values(%s,%s,%s,%s,%s)'''
+    values = (row["States"],
+              row["Years"],
+              row["Quarter"],
+              row["Pincodes"],
+              row["RegisteredUser"])
+    cursor.execute(insert_query6,values)
+    mydb.commit()
