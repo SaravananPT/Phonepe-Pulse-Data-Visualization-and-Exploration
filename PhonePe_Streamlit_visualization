@@ -7,13 +7,14 @@ import folium
 from streamlit_folium import folium_static
 import altair as alt
 from PIL import Image
+from datetime import datetime
 
 
 # Establishing connection to PostgreSQL database
 conn = psycopg2.connect(
     dbname="phonepe_pulse",
     user="postgres",
-    password="pw",
+    password="Blue9791",
     host="localhost"
 )
 
@@ -199,38 +200,126 @@ if select == "HOME":
 
     with col6:
         st.image(Image.open("/Users/ptsaravanan/Downloads/pulse-2.png"), width=500)
-
+    st.markdown("""
+        <style>
+        .stApp {
+            background-color: #F0CEFF; /* Violet background */
+        }
+        .stHeader {
+            color: #FFFFFF; /* White text color for headers */
+        }
+        .stSubheader {
+            color: #FFFFFF; /* White text color for subheaders */
+        }
+        .stTextInput, .stSelectbox {
+            margin-bottom: 10px;
+        }
+        .stTabs [data-baseweb="tab-list"] {
+            background: #FBF2FE; /* Violet background for tab container */
+            padding: 10px;
+            border-radius: 10px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 # Data Exploration Section
+def get_current_quarter():
+    current_month = datetime.now().month
+    return (current_month - 1) // 3 + 1
+
+
+# Get the current quarter dynamically
+current_quarter = get_current_quarter()
+
+# Streamlit code to display the dashboard
 if select == "DASHBOARD":
-    st.header("Dashboard")
-    tab1, tab2, tab3, tab4 = st.columns(4)
+    st.title("📊 Analytics Dashboard")
+
+    # Tabs for different sections
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["📅 Quarterly Data", "🗺️ Transaction Amount", "👥 Registered Users", "🚀 Active Users"])
+
     with tab1:
-        st.subheader("Active User Over Quarters")
+        st.header("Active Users Over Quarters")
+        st.write("Visualizing the number of app opens across different quarters.")
+
         query = sql_queries["get_quarterly_app_opens"]
-        df = execute_query(query)
-        generate_bar_chart(df, 'quarter', 'appopens', 'App Opens Variation Over Quarters', 'Quarter', 'App Opens')
+        df_quarterly_app_opens = execute_query(query)
+        generate_bar_chart(df_quarterly_app_opens, 'quarter', 'appopens', 'App Opens Over Quarters', 'Quarter',
+                           'App Opens')
 
     with tab2:
-        st.subheader("Transaction Amount Variation Across States")
-        year = 2023  # Default year
-        quarter = 1  # Default quarter
-        query = f"SELECT * FROM aggregated_insurance WHERE years={year} AND quarter={quarter} ORDER BY transaction_amount DESC LIMIT 5"
-        df = execute_query(query)
-        generate_donut_chart(df, 'transaction_amount', 'states', 'Transaction Amount Variation Across States')
-        generate_choropleth_map(df, 'states', 'transaction_amount', 'Transaction Amount Variation Across States')
+        st.header("Transaction Amount by States")
+        st.write("Viewing the variation in transaction amounts across states.")
+
+        # Grouping the year and quarter selectors together
+        st.subheader("Filter by Year and Quarter")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            year = st.selectbox("Select Year", [2020, 2021, 2022, 2023], index=3)  # Example years
+
+        with col2:
+            quarter = st.selectbox("Select Quarter", ["Q1", "Q2", "Q3", "Q4"], index=current_quarter - 1)
+
+        # Use the selected year and quarter for the query
+        query = f"SELECT * FROM aggregated_insurance WHERE years={year} AND quarter={current_quarter} ORDER BY transaction_amount DESC LIMIT 5"
+        df_transaction_amount = execute_query(query)
+
+        # Layout for Donut and Choropleth Chart
+        col1, col2 = st.columns([1, 1.5])
+        with col1:
+            st.write("### Top 5 states by transaction amount:")
+            generate_donut_chart(df_transaction_amount, 'transaction_amount', 'states', 'Transaction Amount by States')
+        with col2:
+            st.write("### Geographical distribution of transaction amounts:")
+            generate_choropleth_map(df_transaction_amount, 'states', 'transaction_amount',
+                                    'Top 5 states')
+
     with tab3:
-        st.header("Top 5 Registered Users States")
+        st.header("Top 5 States by Registered Users")
+        st.write("Highlighting the top states with the most registered users.")
+
         query = sql_queries["registered_user"]
         df_registered_users = execute_query(query)
         generate_bar_chart(df_registered_users, 'states', 'total_registered_user', 'Top 5 States by Registered Users',
-                       'States', 'Total Registered Users')
+                           'States', 'Total Registered Users')
+
     with tab4:
-        # Displaying App Opens Grouped by States
-        st.header("Top 5 Active User States")
+        st.header("Top 5 States by Active Users")
+        st.write("Focusing on states with the highest number of active users.")
+
         query = sql_queries["top_active_users"]
         df_app_opens = execute_query(query)
         generate_bar_chart(df_app_opens, 'states', 'total_app_opens', 'Top 5 States by Active Users', 'States',
-                       'Total Active users')
+                           'Total Active Users')
+
+    st.write("Explore different aspects of the data using the sections above.")
+
+    import streamlit as st
+
+
+    st.markdown("""
+    <style>
+    .stApp {
+        background-color: #F0CEFF; /* Violet background */
+    }
+    .stHeader {
+        color: #FFFFFF; /* White text color for headers */
+    }
+    .stSubheader {
+        color: #FFFFFF; /* White text color for subheaders */
+    }
+    .stTextInput, .stSelectbox {
+        margin-bottom: 10px;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        background: #FBF2FE; /* Violet background for tab container */
+        padding: 10px;
+        border-radius: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # Top Charts Section
 elif select == "INSIGHTS":
     st.header("Insights")
@@ -249,22 +338,29 @@ elif select == "INSIGHTS":
     # 1. Transaction Amount Variation Across States
     if question == "1. Transaction Amount Variation Across States":
         st.subheader("1. Transaction Amount Variation Across States")
-        year = st.selectbox("Select Year", [2022, 2023, 2024])  # Add year selector
+        year = st.selectbox("Select Year", range(2020, 2024))  # Add year selector
         quarter = st.selectbox("Select Quarter", [1, 2, 3, 4])  # Add quarter selector
 
-        # Selecting the data from the SQL table
+        # Formulate the query
         query = f"SELECT * FROM aggregated_insurance WHERE years={year} AND quarter={quarter}"
+
+        # Execute the query and fetch the data
         df = execute_query(query)
 
-        # Display the data
+        # Display the data in a dataframe
         st.dataframe(df)
 
-        # Generate a bar chart showing the transaction amount for each state
-        generate_bar_chart(df, 'states', 'transaction_amount', 'Transaction Amount Variation Across States', 'States',
-                           'Transaction Amount')
+        # Check if dataframe is empty and handle it
+        if df.empty:
+            st.write("No data found for the selected year and quarter.")
+        else:
+            # Generate a bar chart showing the transaction amount for each state
+            generate_bar_chart(df, 'states', 'transaction_amount', 'Transaction Amount Variation Across States',
+                               'States', 'Transaction Amount')
 
-        # Generate a choropleth map displaying the transaction amount variation across states
-        generate_choropleth_map(df, 'states', 'transaction_amount', 'Transaction Amount Variation Across States')
+            # Generate a choropleth map displaying the transaction amount variation across states
+            generate_choropleth_map(df, 'states', 'transaction_amount', 'Transaction Amount Variation Across States')
+
 
     # 2. Transaction Count by Transaction Type
     elif question == "2. Transaction Count by Transaction Type":
@@ -350,7 +446,7 @@ elif select == "INSIGHTS":
 
         # Widget to select the year
 
-        selected_year = st.selectbox("Select the Year", range(2019, 2023))
+        selected_year = st.selectbox("Select the Year", range(2019, 2024))
 
         # SQL query with parameter for selected year
 
@@ -484,7 +580,7 @@ elif select == "INSIGHTS":
 
         # Selecting the data from the SQL table
 
-        year = st.selectbox('Select Year', range(2019, 2023))  # Example years, modify as needed
+        year = st.selectbox('Select Year', range(2019, 2024))  # Example years, modify as needed
         quarter = st.selectbox('Select Quarter', ['Q1', 'Q2', 'Q3', 'Q4'])  # Example quarters, modify as needed
 
         # Convert quarter to corresponding integers
@@ -509,3 +605,25 @@ elif select == "INSIGHTS":
         generate_horizontal_bar_chart(top_10_districts, 'registereduser', 'districts',
                                       'Top 10 User Distribution by District',
                                       'Registered Users', 'District')
+
+    st.markdown("""
+        <style>
+        .stApp {
+            background-color: #F0CEFF; /* Violet background */
+        }
+        .stHeader {
+            color: #FFFFFF; /* White text color for headers */
+        }
+        .stSubheader {
+            color: #FFFFFF; /* White text color for subheaders */
+        }
+        .stTextInput, .stSelectbox {
+            margin-bottom: 10px;
+        }
+        .stTabs [data-baseweb="tab-list"] {
+            background: #FBF2FE; /* Violet background for tab container */
+            padding: 10px;
+            border-radius: 10px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
